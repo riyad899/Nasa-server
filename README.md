@@ -106,10 +106,10 @@ http://localhost:5000/api/v1
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/data/nasa-power` | Fetch climate data from NASA POWER |
-| `GET` | `/data/imerg` | Spatial rainfall (🔜 coming soon) |
-| `GET` | `/data/smap` | Soil moisture (🔜 coming soon) |
-| `GET` | `/data/modis` | NDVI vegetation (🔜 coming soon) |
+| `GET` / `POST` | `/data/nasa-power` | Fetch climate data from NASA POWER |
+| `GET` / `POST` | `/data/imerg` | Spatial rainfall from NASA IMERG Final Daily |
+| `GET` / `POST` | `/data/smap` | Surface & root-zone soil moisture from NASA SMAP L4 |
+| `GET` / `POST` | `/data/modis` | NDVI vegetation (🔜 coming soon) |
 
 ### NASA POWER — Example
 
@@ -209,8 +209,8 @@ server/
 | Admin module | ✅ Complete |
 | RAG / AI Assistant | ✅ Complete |
 | NASA POWER data API | ✅ Complete |
-| NASA IMERG rainfall API | 🔜 Planned |
-| NASA SMAP soil moisture API | 🔜 Planned |
+| NASA IMERG rainfall API | ✅ Complete |
+| NASA SMAP soil moisture API | ✅ Complete |
 | NASA MODIS NDVI API | 🔜 Planned |
 | AI Planting Recommendation Engine | 🔜 Planned |
 

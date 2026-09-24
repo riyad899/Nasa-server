@@ -123,7 +123,7 @@ All data APIs are registered under: `GET /api/v1/data/*`
 - ✅ `Admin` — Admin CRUD operations
 - ✅ `Rag` — RAG knowledge base (ingest + query)
 - ✅ `NasaPower` — NASA POWER climate data fetcher
-- 🔜 `IMERG` — Spatial rainfall data
-- 🔜 `SMAP` — Soil moisture data
+- ✅ `IMERG` — NASA IMERG Final Daily spatial rainfall data
+- ✅ `SMAP` — NASA SMAP Level-4 surface & root-zone soil moisture
 - 🔜 `MODIS` — NDVI vegetation data
 - 🔜 `AIEngine` — Planting recommendation engine

@@ -82,8 +82,8 @@ Then register the route in `src/app/routes/index.ts`.
 | Module        | Source         | Data                          | Status      |
 |---------------|----------------|-------------------------------|-------------|
 | NasaPower     | NASA POWER API | Temperature, Rainfall, Solar  | ✅ Done     |
-| IMERG         | NASA IMERG     | Spatial Rainfall              | 🔜 Planned  |
-| SMAP          | NASA SMAP      | Soil Moisture                 | 🔜 Planned  |
+| IMERG         | NASA IMERG     | Spatial Rainfall              | ✅ Done     |
+| SMAP          | NASA SMAP      | Soil Moisture (Surface & Root)| ✅ Done     |
 | MODIS/VIIRS   | NASA MODIS     | NDVI (Vegetation Index)       | 🔜 Planned  |
 | AI Engine     | Internal       | Planting Recommendations      | 🔜 Planned  |
 

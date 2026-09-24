@@ -39,6 +39,11 @@ interface EnvConfig {
         RAINY_DAY_MM: number;
         HEAVY_RAIN_MM: number;
     };
+    SMAP: {
+        EARTHDATA_TOKEN: string;
+        MAX_DAYS: number;
+        CACHE_TTL_MS: number;
+    };
 }
 
 const LoadEnvVarialbes = (): EnvConfig => {
@@ -105,6 +110,11 @@ const LoadEnvVarialbes = (): EnvConfig => {
             CACHE_TTL_MS: Number(process.env.IMERG_CACHE_TTL_MS || 6 * 60 * 60 * 1000),
             RAINY_DAY_MM: Number(process.env.IMERG_RAINY_DAY_MM || 1),
             HEAVY_RAIN_MM: Number(process.env.IMERG_HEAVY_RAIN_MM || 64.5),
+        },
+        SMAP: {
+            EARTHDATA_TOKEN: process.env.NASA_EARTHDATA_TOKEN || process.env.EARTHDATA_TOKEN || "",
+            MAX_DAYS: Number(process.env.SMAP_MAX_DAYS || 31),
+            CACHE_TTL_MS: Number(process.env.SMAP_CACHE_TTL_MS || 6 * 60 * 60 * 1000),
         },
     }
 }

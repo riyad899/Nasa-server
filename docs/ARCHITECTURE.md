@@ -81,12 +81,17 @@ server/
 │           ├── Auth/             ← Authentication module
 │           ├── admin/            ← Admin CRUD module
 │           ├── Rag/              ← RAG/AI knowledge base module
-│           └── NasaPower/        ← NASA POWER climate data module ✅
-│               ├── nasaPower.interface.ts
-│               ├── nasaPower.validation.ts
-│               ├── nasaPower.service.ts
-│               ├── nasaPower.controller.ts
-│               └── nasaPower.route.ts
+│           ├── NasaPower/        ← NASA POWER climate data module ✅
+│           ├── IMERG/            ← NASA IMERG spatial rainfall module ✅
+│           └── SMAP/             ← NASA SMAP soil moisture module ✅
+│               ├── smap.interface.ts
+│               ├── smap.constants.ts
+│               ├── smap.validation.ts
+│               ├── smap.client.ts
+│               ├── smap.parser.ts
+│               ├── smap.service.ts
+│               ├── smap.controller.ts
+│               └── smap.route.ts
 │
 ├── prisma/
 │   └── Schema/
@@ -244,8 +249,8 @@ Protected endpoints read cookie → validate session → attach req.user
   ├── /admin             → Admin CRUD
   ├── /rag               → RAG knowledge base + AI query
   └── /data
-        └── /nasa-power  → NASA POWER climate data ✅
-        └── /imerg        → Spatial rainfall (🔜)
-        └── /smap         → Soil moisture (🔜)
-        └── /modis        → NDVI vegetation (🔜)
+        ├── /nasa-power  → NASA POWER climate data ✅
+        ├── /imerg       → NASA IMERG Final Daily spatial rainfall ✅
+        ├── /smap        → NASA SMAP Level-4 surface & root-zone soil moisture ✅
+        └── /modis       → NDVI vegetation (🔜)
 ```
