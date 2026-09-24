@@ -31,6 +31,14 @@ interface EnvConfig {
         OPENROUTER_EMBEDDING_MODEL: string;
         OPENROUTER_LLM_MODEL: string;
     };
+    IMERG: {
+        EARTHDATA_TOKEN: string;
+        MAX_DAYS: number;
+        MAX_CELL_DAYS: number;
+        CACHE_TTL_MS: number;
+        RAINY_DAY_MM: number;
+        HEAVY_RAIN_MM: number;
+    };
 }
 
 const LoadEnvVarialbes = (): EnvConfig => {
@@ -89,6 +97,14 @@ const LoadEnvVarialbes = (): EnvConfig => {
             OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
             OPENROUTER_EMBEDDING_MODEL: process.env.OPENROUTER_EMBEDDING_MODEL || "nvidia/llama-nemotron-embed-vl-1b-v2:free",
             OPENROUTER_LLM_MODEL: process.env.OPENROUTER_LLM_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
+        },
+        IMERG: {
+            EARTHDATA_TOKEN: process.env.EARTHDATA_TOKEN || process.env.NASA_EARTHDATA_TOKEN || "",
+            MAX_DAYS: Number(process.env.IMERG_MAX_DAYS || 92),
+            MAX_CELL_DAYS: Number(process.env.IMERG_MAX_CELL_DAYS || 20000),
+            CACHE_TTL_MS: Number(process.env.IMERG_CACHE_TTL_MS || 6 * 60 * 60 * 1000),
+            RAINY_DAY_MM: Number(process.env.IMERG_RAINY_DAY_MM || 1),
+            HEAVY_RAIN_MM: Number(process.env.IMERG_HEAVY_RAIN_MM || 64.5),
         },
     }
 }

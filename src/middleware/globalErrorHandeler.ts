@@ -14,6 +14,7 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
   let errorSource: IError[] = []
   let statusCode: number = status.INTERNAL_SERVER_ERROR;
   let message: string = "Internal Server Error";
+  let code: string | undefined;
   let stack: string | undefined = undefined;
 
   if (err instanceof z.ZodError) {
@@ -27,6 +28,7 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
     statusCode = err.statusCode || status.INTERNAL_SERVER_ERROR;
     message = err.message || "Internal Server Error";
     stack = err.stack;
+    code = err.code;
     errorSource = [
       {
         path: "app",
@@ -52,9 +54,14 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
     success: false,
     message: message,
     statusCode: statusCode,
+    code,
     stack: env.NODE_ENV === "development" ? stack : undefined,
     errorSource: errorSource.length > 0 ? errorSource : undefined,
     error: env.NODE_ENV === "development" ? err : undefined,
+  }
+
+  if (err instanceof AppError && err.retryAfter) {
+    res.setHeader("Retry-After", err.retryAfter);
   }
 
   res.status(statusCode).json(errorResponse);
