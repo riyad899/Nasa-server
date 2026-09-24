@@ -10,15 +10,13 @@ import { envVars } from "../../../config/env.js";
 import { auth } from "../../lib/auth.js";
 
 const register = catchAsync(async (req, res) => {
-  const { name, email, password, age, address, contact } = req.body;
+  const { name, email, password, image } = req.body;
   const result = await authService.register(
     {
       name,
       email,
       password,
-      age: age !== undefined ? Number(age) : undefined,
-      address,
-      contact,
+      image,
     },
     req.headers
   );
@@ -34,7 +32,7 @@ const register = catchAsync(async (req, res) => {
   sendResponse(res, {
     httpStatus: status.CREATED,
     success: true,
-    message: "Customer registered successfully",
+    message: "User registered successfully",
     data: result.data,
   });
 });
@@ -79,13 +77,13 @@ const verifyEmail = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, { httpStatus: status.OK, success: true, message: "Email verified successfully" });
 });
 
-const updateCustomer = catchAsync(async (req, res) => {
-  const id = Number(req.params.id);
-  if (Number.isNaN(id)) {
-    throw new AppError("Invalid customer id", status.BAD_REQUEST);
+const updateUser = catchAsync(async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    throw new AppError("Unauthorized access! User not found in request.", status.UNAUTHORIZED);
   }
-  const data = await authService.updateCustomer(id, req.body);
-  sendResponse(res, { httpStatus: status.OK, success: true, message: "Customer updated successfully", data });
+  const data = await authService.updateUser(user.userId, req.body);
+  sendResponse(res, { httpStatus: status.OK, success: true, message: "User updated successfully", data });
 });
 
 const getNewToken = catchAsync(async (req: Request, res: Response) => {
@@ -143,12 +141,25 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, { httpStatus: status.OK, success: true, message: "Password reset successfully" });
 });
 
-// /api/v1/auth/login/google?redirect=/profile
-const googleLogin = catchAsync((req: Request, res: Response) => {
-  const redirectPath = req.query.redirect || "/dashboard";
-  const encodedRedirectPath = encodeURIComponent(redirectPath as string);
+// GET /api/v1/auth/login/google?redirect=/dashboard
+const googleLogin = catchAsync(async (req: Request, res: Response) => {
+  const redirectPath = (req.query.redirect as string) || "/dashboard";
+  const encodedRedirectPath = encodeURIComponent(redirectPath);
   const callbackURL = `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success?redirect=${encodedRedirectPath}`;
-  res.render("googleRedirect", { callbackURL, betterAuthUrl: envVars.BETTER_AUTH_URL });
+
+  // Server-side: ask better-auth for the Google OAuth URL, then redirect the browser there
+  const result = await auth.api.signInSocial({
+    body: {
+      provider: "google",
+      callbackURL,
+    },
+  });
+
+  if (!result?.url) {
+    return res.status(500).json({ success: false, message: "Failed to get Google OAuth URL. Check your Google_Client_ID and Google_Client_Secret in .env" });
+  }
+
+  res.redirect(result.url);
 });
 
 const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
@@ -181,6 +192,6 @@ const handleOAuthError = catchAsync((req: Request, res: Response) => {
 });
 
 export const AuthController = {
-  register, LoginUser, updateCustomer, getMe, getNewToken, changePassword,
+  register, LoginUser, updateUser, getMe, getNewToken, changePassword,
   logoutUser, verifyEmail, forgetPassword, resetPassword, googleLogin, googleLoginSuccess, handleOAuthError,
 };

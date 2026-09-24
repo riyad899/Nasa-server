@@ -13,30 +13,30 @@ export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: "postgresql",
     }),
-    emailAndPassword:{
+    emailAndPassword: {
         enabled: true,
-        requireEmailVerification:true,
+        requireEmailVerification: false,
     },
-      socialProviders:{
-        google:{
+    socialProviders: {
+        google: {
             clientId: envVars.Google_Client_ID,
             clientSecret: envVars.Google_Client_Secret,
             // callbackUrl: envVars.GOOGLE_CALLBACK_URL,
-            mapProfileToUser: ()=>{
+            mapProfileToUser: () => {
                 return {
-                    role : Role.CUSTOMER,
-                    status : userStatus.ACTIVE,
-                    needPasswordChange : false,
-                    emailVerified : true,
-                    isDeleted : false,
-                    deletedAt : null,
+                    role: Role.USER,
+                    status: userStatus.ACTIVE,
+                    needPasswordChange: false,
+                    emailVerified: true,
+                    isDeleted: false,
+                    deletedAt: null,
                 }
             }
         }
     },
-       emailVerification:{
-        sendOnSignUp: true,
-        sendOnSignIn: true,
+    emailVerification: {
+        sendOnSignUp: false,
+        sendOnSignIn: false,
         autoSignInAfterVerification: true,
     },
 
@@ -46,7 +46,7 @@ export const auth = betterAuth({
         role: {
           type: "string",
             required: true,
-            defaultValue: Role.CUSTOMER,
+            defaultValue: Role.USER,
         },
         status: {
           type: "string",
@@ -87,8 +87,8 @@ export const auth = betterAuth({
                     return;
                    }
 
-                   if(user && user.role === Role.SUPER_ADMIN){
-                    console.log(`User with email ${email} is a super admin. Skipping sending verification OTP.`);
+                   if(user && user.role === Role.ADMIN){
+                    console.log(`User with email ${email} is an admin. Skipping sending verification OTP.`);
                     return;
                    }
 

@@ -3,7 +3,7 @@ import z from "zod";
 const strongPasswordRegex =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/;
 
-export const registerCustomerZodSchema = z.object({
+export const registerUserZodSchema = z.object({
   name: z
     .string({ error: "Name is required" })
     .min(2, "Name must be at least 2 characters long")
@@ -17,9 +17,7 @@ export const registerCustomerZodSchema = z.object({
       strongPasswordRegex,
       "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
     ),
-  age: z.number().int().positive().optional(),
-  address: z.string().min(5, "Address must be at least 5 characters long").max(100, "Address must be less than 100 characters long").optional(),
-  contact: z.string().max(14, "Contact number must be less than 14 characters long").optional(),
+  image: z.string().url("Invalid image URL").optional(),
 });
 
 export const loginUserZodSchema = z.object({
@@ -27,17 +25,14 @@ export const loginUserZodSchema = z.object({
   password: z.string({ error: "Password is required" }).min(1, "Password is required"),
 });
 
-export const updateCustomerZodSchema = z
+export const updateUserZodSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters long").max(50, "Name must be less than 50 characters long").optional(),
-    email: z.string().email("Invalid email format").optional(),
-    age: z.number().int().positive().optional(),
-    address: z.string().min(5, "Address must be at least 5 characters long").max(100, "Address must be less than 100 characters long").optional(),
-    contact: z.string().max(14, "Contact number must be less than 14 characters long").optional(),
+    image: z.string().url("Invalid image URL").optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
-    message: "At least one customer field is required for update",
+    message: "At least one field is required for update",
   });
 
 export const verifyEmailZodSchema = z.object({

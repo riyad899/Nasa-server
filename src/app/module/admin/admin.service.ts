@@ -1,5 +1,5 @@
 import status from "http-status";
-import { Role, userStatus } from "@prisma/client";
+import { Prisma, Role, userStatus } from "@prisma/client";
 import AppError from "../../errorHelpers/appError.js";
 import { IRequestUser } from "../../interfaces/requestUser.interface.js";
 import { prisma } from "../../lib/prisma.js";
@@ -8,9 +8,7 @@ import { IUpdateAdminPayload } from "./admin.interface.js";
 const getAllAdmins = async () => {
     const admins = await prisma.user.findMany({
         where: {
-            role: {
-                in: [Role.ADMIN, Role.SUPER_ADMIN],
-            },
+            role: Role.ADMIN,
         },
     })
 
@@ -21,14 +19,12 @@ const getAdminById = async (id: string) => {
     const admin = await prisma.user.findFirst({
         where: {
             id,
-            role: {
-                in: [Role.ADMIN, Role.SUPER_ADMIN],
-            },
+            role: Role.ADMIN,
         }
     })
 
     if (!admin) {
-        throw new AppError("Admin or Super Admin not found", status.NOT_FOUND);
+        throw new AppError("Admin not found", status.NOT_FOUND);
     }
 
     return admin;
@@ -38,14 +34,12 @@ const updateAdmin = async (id: string, payload: IUpdateAdminPayload) => {
     const isAdminExist = await prisma.user.findFirst({
         where: {
             id,
-            role: {
-                in: [Role.ADMIN, Role.SUPER_ADMIN],
-            },
+            role: Role.ADMIN,
         }
     })
 
     if (!isAdminExist) {
-        throw new AppError("Admin or Super Admin not found", status.NOT_FOUND);
+        throw new AppError("Admin not found", status.NOT_FOUND);
     }
 
     const { admin } = payload;
@@ -71,21 +65,19 @@ const deleteAdmin = async (id: string, user: IRequestUser) => {
     const isAdminExist = await prisma.user.findFirst({
         where: {
             id,
-            role: {
-                in: [Role.ADMIN, Role.SUPER_ADMIN],
-            },
+            role: Role.ADMIN,
         }
     })
 
     if (!isAdminExist) {
-        throw new AppError("Admin or Super Admin not found", status.NOT_FOUND);
+        throw new AppError("Admin not found", status.NOT_FOUND);
     }
 
     if (isAdminExist.id === user.userId) {
         throw new AppError("You cannot delete yourself", status.BAD_REQUEST);
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.user.update({
             where: { id },
             data: {
@@ -108,8 +100,7 @@ const deleteAdmin = async (id: string, user: IRequestUser) => {
         });
 
         return admin;
-    }
-    )
+    })
 
     return result;
 }

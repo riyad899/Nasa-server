@@ -5,7 +5,7 @@ model User {
   id            String    @id
   name          String
   email         String
-  role          Role      @default(CUSTOMER)
+  role          Role      @default(USER)
   status        userStatus @default(ACTIVE)
   needsPasswordReset Boolean   @default(false)
   isdeleted     Boolean   @default(false)
@@ -17,8 +17,6 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  customer     Customer?
-  staff        Staff?
   @@unique([email])
   @@map("user")
 }

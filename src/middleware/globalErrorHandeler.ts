@@ -2,9 +2,9 @@ import { NextFunction, Request, Response } from "express";
 import status from "http-status";
 import { env } from "node:process";
 import z from "zod";
-import { IError, IErrorResponse } from "../app/interfaces/globalError.interface";
-import { handleZodErrors } from "../app/errorHelpers/handleZodErrors";
-import AppError from "../app/errorHelpers/appError";
+import { IError, IErrorResponse } from "../app/interfaces/globalError.interface.js";
+import { handleZodErrors } from "../app/errorHelpers/handleZodErrors.js";
+import AppError from "../app/errorHelpers/appError.js";
 
 
 export const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {

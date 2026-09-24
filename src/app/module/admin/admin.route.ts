@@ -8,16 +8,16 @@ import { updateAdminZodSchema } from "./admin.validation.js";
 const router = Router();
 
 router.get("/",
-    checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+    checkAuth(Role.ADMIN),
     AdminController.getAllAdmins);
 router.get("/:id",
-    checkAuth(Role.ADMIN, Role.SUPER_ADMIN),
+    checkAuth(Role.ADMIN),
     AdminController.getAdminById);
 router.patch("/:id",
-    checkAuth(Role.SUPER_ADMIN),
+    checkAuth(Role.ADMIN),
     validateZodSchema(updateAdminZodSchema), AdminController.updateAdmin);
 router.delete("/:id",
-    checkAuth(Role.SUPER_ADMIN),
+    checkAuth(Role.ADMIN),
     AdminController.deleteAdmin);
 
 export const AdminRoute = router;

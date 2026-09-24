@@ -1,17 +1,11 @@
 enum Role {
-  STAFF
-  CUSTOMER
-    SUPER_ADMIN
+  USER
   ADMIN
 }
+
 enum userStatus {
     ACTIVE
     INACTIVE
     DELETED
     BLOCKED
-}
-
-enum GENDER {
-    MALE
-    FEMALE
 }

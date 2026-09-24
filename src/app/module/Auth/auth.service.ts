@@ -2,7 +2,7 @@
 import { auth } from "../../lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
 import { IncomingHttpHeaders } from "http";
-import { Prisma, userStatus } from "@prisma/client";
+import { userStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import status from "http-status";
 import AppError from "../../errorHelpers/appError.js";
@@ -12,13 +12,11 @@ import { jwtUtils } from "../../utils/jwt.js";
 import { envVars } from "../../../config/env.js";
 import { JwtPayload } from "jsonwebtoken";
 
-interface IRegisterCustomerPayload {
+interface IRegisterUserPayload {
   name: string;
   email: string;
   password: string;
-  age?: number;
-  address?: string;
-  contact?: string;
+  image?: string;
 }
 
 interface ILoginUserPayload {
@@ -26,12 +24,9 @@ interface ILoginUserPayload {
   password: string;
 }
 
-interface IUpdateCustomerPayload {
+interface IUpdateUserPayload {
   name?: string;
-  email?: string;
-  age?: number;
-  address?: string;
-  contact?: string;
+  image?: string;
 }
 
 const ensureNotGoogleUserByUserId = async (userId: string) => {
@@ -50,18 +45,11 @@ const ensureNotGoogleUserByEmail = async (email: string) => {
   await ensureNotGoogleUserByUserId(user.id);
 };
 
-const register = async (payload: IRegisterCustomerPayload, requestHeaders: IncomingHttpHeaders) => {
-  const { name, email, password, age, address, contact } = payload;
-
-  if (age !== undefined && (!Number.isInteger(age) || age <= 0)) {
-    throw new AppError("Valid age is required to create customer profile", status.BAD_REQUEST);
-  }
-  if (address !== undefined && !address.trim()) {
-    throw new AppError("Address cannot be empty", status.BAD_REQUEST);
-  }
+const register = async (payload: IRegisterUserPayload, requestHeaders: IncomingHttpHeaders) => {
+  const { name, email, password, image } = payload;
 
   const response = await auth.api.signUpEmail({
-    body: { name, email, password },
+    body: { name, email, password, ...(image ? { image } : {}) },
     headers: fromNodeHeaders(requestHeaders),
     asResponse: true,
   } as any) as Response;
@@ -71,34 +59,30 @@ const register = async (payload: IRegisterCustomerPayload, requestHeaders: Incom
     throw new AppError("Failed to create user", status.INTERNAL_SERVER_ERROR);
   }
 
-  try {
-    const customer = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      return tx.customer.create({
-        data: {
-          name,
-          email,
-          ...(age !== undefined ? { age } : {}),
-          ...(address !== undefined ? { address: address.trim() } : {}),
-          ...(contact !== undefined ? { contact } : {}),
-          user: { connect: { id: data.user.id } },
-        },
-      });
-    });
+  // Auto-verify email so user can login immediately without email verification
+  await prisma.user.update({
+    where: { id: data.user.id },
+    data: { emailVerified: true },
+  });
 
-    const accessToken = tokenUtils.getAccessToken({
-      userId: data.user.id, email: data.user.email, role: data.user.role,
-      status: data.user.status, isDeleted: data.user.isdeleted, emailVerified: data.user.emailVerified,
-    });
-    const refreshToken = tokenUtils.getRefreshToken({
-      userId: data.user.id, email: data.user.email, role: data.user.role,
-      status: data.user.status, isDeleted: data.user.isdeleted, emailVerified: data.user.emailVerified,
-    });
+  const accessToken = tokenUtils.getAccessToken({
+    userId: data.user.id,
+    email: data.user.email,
+    role: data.user.role,
+    status: data.user.status,
+    isDeleted: data.user.isdeleted,
+    emailVerified: true,
+  });
+  const refreshToken = tokenUtils.getRefreshToken({
+    userId: data.user.id,
+    email: data.user.email,
+    role: data.user.role,
+    status: data.user.status,
+    isDeleted: data.user.isdeleted,
+    emailVerified: true,
+  });
 
-    return { data: { ...data, customer, accessToken, refreshToken } };
-  } catch {
-    await prisma.user.delete({ where: { id: data.user.id } }).catch(() => undefined);
-    throw new AppError("Failed to create customer profile", status.INTERNAL_SERVER_ERROR);
-  }
+  return { data: { ...data, accessToken, refreshToken } };
 };
 
 const LoginUser = async (payload: ILoginUserPayload) => {
@@ -121,35 +105,25 @@ const LoginUser = async (payload: ILoginUserPayload) => {
   return { ...data, accessToken, refreshToken };
 };
 
-const updateCustomer = async (id: number, payload: IUpdateCustomerPayload) => {
-  const customerExist = await prisma.customer.findUnique({
-    where: { id },
-    include: { user: { select: { id: true } } },
+const updateUser = async (userId: string, payload: IUpdateUserPayload) => {
+  const userExist = await prisma.user.findUnique({
+    where: { id: userId },
   });
 
-  if (!customerExist) throw new AppError("Customer not found", status.NOT_FOUND);
-  if (customerExist.isDeleted) throw new AppError("Cannot update a deleted customer", status.BAD_REQUEST);
-
-  if (payload.email) {
-    const emailAlreadyInUse = await prisma.customer.findFirst({
-      where: { email: payload.email, id: { not: id } },
-      select: { id: true },
-    });
-    if (emailAlreadyInUse) throw new AppError("Customer email already exists", status.CONFLICT);
+  if (!userExist) throw new AppError("User not found", status.NOT_FOUND);
+  if (userExist.isdeleted || userExist.status === userStatus.DELETED) {
+    throw new AppError("Cannot update a deleted user", status.BAD_REQUEST);
   }
 
-  const updatedCustomer = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const customer = await tx.customer.update({
-      where: { id },
-      data: { name: payload.name, email: payload.email, age: payload.age, address: payload.address?.trim(), contact: payload.contact },
-    });
-    if (customerExist.user?.id) {
-      await tx.user.update({ where: { id: customerExist.user.id }, data: { name: payload.name, email: payload.email } });
-    }
-    return customer;
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(payload.name !== undefined ? { name: payload.name } : {}),
+      ...(payload.image !== undefined ? { image: payload.image } : {}),
+    },
   });
 
-  return updatedCustomer;
+  return updatedUser;
 };
 
 const changePassword = async (payload: IchanegPasswordPayload, sessionToken: string) => {
@@ -182,7 +156,6 @@ const changePassword = async (payload: IchanegPasswordPayload, sessionToken: str
 const getMe = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { customer: true, staff: true },
   });
   if (!user) throw new AppError("User not found", status.NOT_FOUND);
   return user;
@@ -227,7 +200,6 @@ const forgetPassword = async (email: string) => {
   await ensureNotGoogleUserByEmail(email);
   const isUserExist = await prisma.user.findUnique({ where: { email } });
   if (!isUserExist) throw new AppError("User not found", status.NOT_FOUND);
-  if (!isUserExist.emailVerified) throw new AppError("Email not verified", status.BAD_REQUEST);
   if (isUserExist.isdeleted || isUserExist.status === userStatus.DELETED) throw new AppError("User not found", status.NOT_FOUND);
   await auth.api.requestPasswordResetEmailOTP({ body: { email } });
 };
@@ -240,7 +212,6 @@ const resetPassword = async (email: string, otp: string, newPassword: string) =>
 
   const isUserExist = await prisma.user.findUnique({ where: { email } });
   if (!isUserExist) throw new AppError("User not found", status.NOT_FOUND);
-  if (!isUserExist.emailVerified) throw new AppError("Email not verified", status.BAD_REQUEST);
   if (isUserExist.isdeleted || isUserExist.status === userStatus.DELETED) throw new AppError("User not found", status.NOT_FOUND);
 
   await auth.api.resetPasswordEmailOTP({ body: { email, otp, password: newPassword } });
@@ -252,17 +223,12 @@ const resetPassword = async (email: string, otp: string, newPassword: string) =>
 };
 
 const googleLoginSuccess = async (session: Record<string, any>) => {
-  const isCustomerExists = await prisma.customer.findUnique({ where: { userID: session.user.id } });
-  if (!isCustomerExists) {
-    await prisma.customer.create({ data: { userID: session.user.id, name: session.user.name, email: session.user.email } });
-  }
-
   const accessToken = tokenUtils.getAccessToken({ userId: session.user.id, role: session.user.role, name: session.user.name });
   const refreshToken = tokenUtils.getRefreshToken({ userId: session.user.id, role: session.user.role, name: session.user.name });
   return { accessToken, refreshToken };
 };
 
 export const authService = {
-  register, LoginUser, updateCustomer, changePassword, getNewToken, getMe,
+  register, LoginUser, updateUser, changePassword, getNewToken, getMe,
   logoutUser, verifyEmail, forgetPassword, resetPassword, googleLoginSuccess,
 };

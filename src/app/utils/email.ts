@@ -3,8 +3,8 @@ import ejs from "ejs";
 import status from "http-status";
 import nodemailer from "nodemailer";
 import path from "path";
-import { envVars } from "../../config/env";
-import AppError from "../errorHelpers/appError";
+import { envVars } from "../../config/env.js";
+import AppError from "../errorHelpers/appError.js";
 
 
 const transporter = nodemailer.createTransport({

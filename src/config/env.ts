@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import AppError from "../app/errorHelpers/appError";
+import AppError from "../app/errorHelpers/appError.js";
 import status from "http-status";
 
 dotenv.config();
@@ -26,6 +26,11 @@ interface EnvConfig {
     Google_Client_ID: string;
     Google_Client_Secret: string;
     Google_callbackURL: string;
+    RAG: {
+        OPENROUTER_API_KEY: string;
+        OPENROUTER_EMBEDDING_MODEL: string;
+        OPENROUTER_LLM_MODEL: string;
+    };
 }
 
 const LoadEnvVarialbes = (): EnvConfig => {
@@ -80,6 +85,11 @@ const LoadEnvVarialbes = (): EnvConfig => {
         Google_Client_ID: process.env.Google_Client_ID as string,
         Google_Client_Secret: process.env.Google_Client_Secret as string,
         Google_callbackURL: process.env.Google_callbackURL as string,
+        RAG: {
+            OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
+            OPENROUTER_EMBEDDING_MODEL: process.env.OPENROUTER_EMBEDDING_MODEL || "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+            OPENROUTER_LLM_MODEL: process.env.OPENROUTER_LLM_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
+        },
     }
 }
 

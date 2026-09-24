@@ -6,16 +6,16 @@ import {
 	forgetPasswordZodSchema,
 	loginUserZodSchema,
 	resetPasswordZodSchema,
-	registerCustomerZodSchema,
-	updateCustomerZodSchema,
+	registerUserZodSchema,
+	updateUserZodSchema,
 	verifyEmailZodSchema,
 } from "./auth.validation.js";
 
 const router = Router();
 
-router.post("/register", validateZodSchema(registerCustomerZodSchema), AuthController.register);
+router.post("/register", validateZodSchema(registerUserZodSchema), AuthController.register);
 router.post("/login", validateZodSchema(loginUserZodSchema), AuthController.LoginUser);
-router.patch("/customer/:id", validateZodSchema(updateCustomerZodSchema), AuthController.updateCustomer);
+router.patch("/update-profile", checkAuth(), validateZodSchema(updateUserZodSchema), AuthController.updateUser);
 router.get("/me", checkAuth(), AuthController.getMe);
 router.post("/refresh-token", AuthController.getNewToken);
 router.post("/change-password", AuthController.changePassword);

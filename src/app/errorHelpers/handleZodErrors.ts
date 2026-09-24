@@ -1,4 +1,4 @@
-import { IError, IErrorResponse } from "../interfaces/globalError.interface";
+import { IError, IErrorResponse } from "../interfaces/globalError.interface.js";
 import status from "http-status";
 import z from "zod";
 

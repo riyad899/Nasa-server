@@ -1,18 +1,36 @@
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS "vector";
+
 -- CreateEnum
-CREATE TYPE "Role" AS ENUM ('STAFF', 'CUSTOMER', 'SUPER_ADMIN', 'ADMIN');
+CREATE TYPE "Role" AS ENUM ('USER', 'ADMIN');
 
 -- CreateEnum
 CREATE TYPE "userStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'DELETED', 'BLOCKED');
 
--- CreateEnum
-CREATE TYPE "GENDER" AS ENUM ('MALE', 'FEMALE');
+-- CreateTable
+CREATE TABLE "document_embeddings" (
+    "id" TEXT NOT NULL,
+    "chunkKey" TEXT NOT NULL,
+    "sourceType" TEXT NOT NULL,
+    "sourceId" TEXT NOT NULL,
+    "sourceLabel" TEXT,
+    "content" TEXT NOT NULL,
+    "metadata" JSONB,
+    "embedding" vector(2048) NOT NULL,
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
+    "deletedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "document_embeddings_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "role" "Role" NOT NULL DEFAULT 'CUSTOMER',
+    "role" "Role" NOT NULL DEFAULT 'USER',
     "status" "userStatus" NOT NULL DEFAULT 'ACTIVE',
     "needsPasswordReset" BOOLEAN NOT NULL DEFAULT false,
     "isdeleted" BOOLEAN NOT NULL DEFAULT false,
@@ -70,42 +88,14 @@ CREATE TABLE "verification" (
     CONSTRAINT "verification_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "customer" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "age" INTEGER,
-    "address" TEXT,
-    "contact" TEXT,
-    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
-    "deletedAt" TIMESTAMP(3),
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "userID" TEXT NOT NULL,
+-- CreateIndex
+CREATE UNIQUE INDEX "document_embeddings_chunkKey_key" ON "document_embeddings"("chunkKey");
 
-    CONSTRAINT "customer_pkey" PRIMARY KEY ("id")
-);
+-- CreateIndex
+CREATE INDEX "idx_document_embeddings_sourceType" ON "document_embeddings"("sourceType");
 
--- CreateTable
-CREATE TABLE "staff" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "phone" TEXT NOT NULL,
-    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
-    "deletedAt" TIMESTAMP(3),
-    "employeeNumber" TEXT NOT NULL,
-    "experience" INTEGER,
-    "gender" "GENDER",
-    "bio" TEXT,
-    "salary" DOUBLE PRECISION,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "userID" TEXT NOT NULL,
-
-    CONSTRAINT "staff_pkey" PRIMARY KEY ("id")
-);
+-- CreateIndex
+CREATE INDEX "idx_document_embeddings_sourceId" ON "document_embeddings"("sourceId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
@@ -122,41 +112,8 @@ CREATE INDEX "account_userId_idx" ON "account"("userId");
 -- CreateIndex
 CREATE INDEX "verification_identifier_idx" ON "verification"("identifier");
 
--- CreateIndex
-CREATE UNIQUE INDEX "customer_email_key" ON "customer"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "customer_userID_key" ON "customer"("userID");
-
--- CreateIndex
-CREATE INDEX "idx_customer_email" ON "customer"("email");
-
--- CreateIndex
-CREATE INDEX "idx_customer_isDeleted" ON "customer"("isDeleted");
-
--- CreateIndex
-CREATE UNIQUE INDEX "staff_email_key" ON "staff"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "staff_phone_key" ON "staff"("phone");
-
--- CreateIndex
-CREATE UNIQUE INDEX "staff_employeeNumber_key" ON "staff"("employeeNumber");
-
--- CreateIndex
-CREATE UNIQUE INDEX "staff_userID_key" ON "staff"("userID");
-
--- CreateIndex
-CREATE INDEX "idx_staff_isDeleted" ON "staff"("isDeleted");
-
 -- AddForeignKey
 ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "customer" ADD CONSTRAINT "customer_userID_fkey" FOREIGN KEY ("userID") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "staff" ADD CONSTRAINT "staff_userID_fkey" FOREIGN KEY ("userID") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
