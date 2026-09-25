@@ -99,11 +99,23 @@ Do NOT include markdown fences like \`\`\`json. Return pure JSON only.`;
       }
 
       const data = (await response.json()) as any;
-      if (!data.choices || data.choices.length === 0) {
-        throw new Error("No response choices returned by LLM model");
+      if (!Array.isArray(data.choices) || data.choices.length === 0) {
+        const providerError = data.error?.message || data.error?.code;
+        const providerMessage = providerError
+          ? `: ${providerError}`
+          : data.provider
+            ? ` from provider ${data.provider}`
+            : "";
+        throw new Error(`No response choices returned by LLM model${providerMessage}`);
       }
 
-      return data.choices[0].message.content;
+      const content = data.choices[0]?.message?.content;
+      if (typeof content !== "string" || content.trim().length === 0) {
+        const finishReason = data.choices[0]?.finish_reason || "unknown";
+        throw new Error(`LLM returned an empty response (finish reason: ${finishReason})`);
+      }
+
+      return content;
     } catch (error) {
       console.error("Error generating LLM response:", error);
       throw error;
