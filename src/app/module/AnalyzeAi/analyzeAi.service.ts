@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { envVars } from "../../../config/env.js";
+import { redisService } from "../../lib/redis.js";
 import { NasaPowerService } from "../NasaPower/nasaPower.service.js";
 import { getImergRainfall } from "../IMERG/imerg.service.js";
 import { SmapService } from "../SMAP/smap.service.js";
@@ -20,6 +21,33 @@ import { ISmapResponse } from "../SMAP/smap.interface.js";
 
 const ragService = new RAGService();
 const llmService = new LLMService();
+
+// 30-minute cache TTL in seconds (1800s)
+const CACHE_TTL_SECONDS = 30 * 60;
+
+// In-flight request deduplication map to prevent simultaneous duplicate fetches
+const inFlightRequests = new Map<string, Promise<IAnalyzeAiResponse>>();
+
+/**
+ * Generate a deterministic Redis cache key based on the analysis request
+ */
+const buildAnalysisCacheKey = (payload: IAnalyzeAiRequest): string => {
+  const lat = Number(payload.location.latitude).toFixed(2);
+  const lon = Number(payload.location.longitude).toFixed(2);
+  const start = toCompactDate(payload.analysisPeriod.startDate);
+  const end = toCompactDate(payload.analysisPeriod.endDate);
+  const currentCrop = (payload.crop?.currentCrop || "any").toLowerCase().trim();
+  const considering = (payload.crop?.consideringCrops || [])
+    .map((c) => c.toLowerCase().trim())
+    .sort()
+    .join(",");
+  const priority = (payload.farmerPriority?.priority || "any").toLowerCase().trim();
+  const water = (payload.farmerPriority?.waterAvailability || "any").toLowerCase().trim();
+  const risk = (payload.farmerPriority?.riskTolerance || "any").toLowerCase().trim();
+  const soilType = (payload.soil?.type || "loam").toLowerCase().trim();
+
+  return `cache:analyze_ai:${lat}_${lon}:${start}_${end}:${currentCrop}:${considering}:${priority}:${water}:${risk}:${soilType}`;
+};
 
 /**
  * Format date helpers
@@ -71,8 +99,31 @@ const parseCleanJson = (rawContent: string): any => {
 
 export const AnalyzeAiService = {
   async runAnalysis(payload: IAnalyzeAiRequest): Promise<IAnalyzeAiResponse> {
-    const { location, analysisPeriod, crop, farmerPriority, soil } = payload;
-    const { latitude, longitude } = location;
+    const cacheKey = buildAnalysisCacheKey(payload);
+
+    // ─── 0. Check Redis Cache First ──────────────────────────────────────────
+    try {
+      const cached = await redisService.getJson<IAnalyzeAiResponse>(cacheKey);
+      if (cached) {
+        console.log(`⚡ [Redis Cache HIT] Returning cached analysis for key: ${cacheKey}`);
+        return {
+          ...cached,
+          analysisId: `fs_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+        };
+      }
+    } catch (cacheError) {
+      console.warn("⚠️ Redis cache retrieval error, proceeding with live analysis:", cacheError);
+    }
+
+    // ─── 0.1 In-Flight Request Deduplication ──────────────────────────────────
+    if (inFlightRequests.has(cacheKey)) {
+      console.log(`⏳ [In-Flight Dedup] Attaching to pending analysis for key: ${cacheKey}`);
+      return await inFlightRequests.get(cacheKey)!;
+    }
+
+    const analysisExecutionPromise = (async () => {
+      const { location, analysisPeriod, crop, farmerPriority, soil } = payload;
+      const { latitude, longitude } = location;
 
     const compactStart = toCompactDate(analysisPeriod.startDate);
     const compactEnd = toCompactDate(analysisPeriod.endDate);
@@ -440,7 +491,7 @@ Return a single JSON object with this exact structure:
     // ─── 6. Build Final Response ─────────────────────────────────────────────
     const analysisId = `fs_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
 
-    return {
+    const finalResponse: IAnalyzeAiResponse = {
       analysisId,
       location,
       analysisPeriod: {
@@ -464,5 +515,24 @@ Return a single JSON object with this exact structure:
         model: envVars.RAG.OPENROUTER_LLM_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
       },
     };
+
+    // ─── 7. Store in Redis Cache with 30-Minute TTL ──────────────────────────
+    try {
+      await redisService.setJson(cacheKey, finalResponse, CACHE_TTL_SECONDS);
+      console.log(`💾 [Redis Cache SET] Stored analysis in Redis for 30 minutes (key: ${cacheKey})`);
+    } catch (cacheSetError) {
+      console.error("⚠️ Failed to store analysis in Redis:", cacheSetError);
+    }
+
+    return finalResponse;
+    })();
+
+    inFlightRequests.set(cacheKey, analysisExecutionPromise);
+
+    try {
+      return await analysisExecutionPromise;
+    } finally {
+      inFlightRequests.delete(cacheKey);
+    }
   },
 };
