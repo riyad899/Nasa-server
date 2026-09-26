@@ -81,33 +81,53 @@ export const AnalyzeAiService = {
 
     const bbox = createBoundingBox(latitude, longitude, 0.25);
 
+    const candidateCrops = crop?.consideringCrops?.length
+      ? crop.consideringCrops
+      : crop?.currentCrop
+      ? [crop.currentCrop]
+      : ["rice", "maize", "mustard", "wheat", "pulses"];
+
+    const ragQuery = `Optimal planting conditions, soil moisture requirements, and water stress tolerance for crops: ${candidateCrops.join(", ")}, soil: ${soil?.type || "agricultural loam"}, water availability: ${farmerPriority?.waterAvailability || "moderate"}`;
+
+    const ragPromise = ragService
+      .retieveRelevantDocuments(ragQuery, 4)
+      .catch((ragError) => {
+        console.warn("RAG retrieval failed, proceeding with fallback knowledge:", ragError);
+        return [];
+      });
+
     // ─── 1. Parallel NASA Data Fetching ──────────────────────────────────────
-    const [powerResult, imergResult, smapResult] = await Promise.allSettled([
-      NasaPowerService.getNasaPowerData({
-        latitude,
-        longitude,
-        start: compactStart,
-        end: compactEnd,
-      }),
-      getImergRainfall({
-        latitudeMin: bbox.latMin,
-        latitudeMax: bbox.latMax,
-        longitudeMin: bbox.lonMin,
-        longitudeMax: bbox.lonMax,
-        start: compactStart,
-        end: compactEnd,
-        includeGrid: false,
-      }),
-      SmapService.getSoilMoisture({
-        latitudeMin: bbox.latMin,
-        latitudeMax: bbox.latMax,
-        longitudeMin: bbox.lonMin,
-        longitudeMax: bbox.lonMax,
-        start: isoStart,
-        end: isoEnd,
-        includeGrid: false,
-      }),
+    const [sourceResults, retrievedDocs] = await Promise.all([
+      Promise.allSettled([
+        NasaPowerService.getNasaPowerData({
+          latitude,
+          longitude,
+          start: compactStart,
+          end: compactEnd,
+        }),
+        getImergRainfall({
+          latitudeMin: bbox.latMin,
+          latitudeMax: bbox.latMax,
+          longitudeMin: bbox.lonMin,
+          longitudeMax: bbox.lonMax,
+          start: compactStart,
+          end: compactEnd,
+          includeGrid: false,
+        }),
+        SmapService.getSoilMoisture({
+          latitudeMin: bbox.latMin,
+          latitudeMax: bbox.latMax,
+          longitudeMin: bbox.lonMin,
+          longitudeMax: bbox.lonMax,
+          start: isoStart,
+          end: isoEnd,
+          includeGrid: false,
+        }),
+      ]),
+      ragPromise,
     ]);
+
+    const [powerResult, imergResult, smapResult] = sourceResults;
 
     const missingSources: string[] = [];
     const successfulDataSources: string[] = [];
@@ -242,22 +262,6 @@ export const AnalyzeAiService = {
       missingSources,
     };
 
-    // ─── 3. Agronomic RAG Search ─────────────────────────────────────────────
-    const candidateCrops = crop?.consideringCrops?.length
-      ? crop.consideringCrops
-      : crop?.currentCrop
-      ? [crop.currentCrop]
-      : ["rice", "maize", "mustard", "wheat", "pulses"];
-
-    const ragQuery = `Optimal planting conditions, soil moisture requirements, and water stress tolerance for crops: ${candidateCrops.join(", ")}, soil: ${soil?.type || "agricultural loam"}, water availability: ${farmerPriority?.waterAvailability || "moderate"}`;
-
-    let retrievedDocs: any[] = [];
-    try {
-      retrievedDocs = await ragService.retieveRelevantDocuments(ragQuery, 4);
-    } catch (ragError) {
-      console.warn("⚠️ Warning: RAG retrieval failed, proceeding with fallback knowledge:", ragError);
-    }
-
     const knowledgeChunks = retrievedDocs
       .filter((doc) => doc.content)
       .map((doc) => doc.content);
@@ -349,7 +353,7 @@ Return a single JSON object with this exact structure:
     try {
       const rawResponse = await llmService.generateResponse(
         userPrompt,
-        knowledgeChunks,
+        [],
         true,
         systemPrompt
       );

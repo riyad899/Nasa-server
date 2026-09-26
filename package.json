@@ -45,6 +45,7 @@
     "http-status": "^2.1.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.4",
+    "redis": "^6.2.1",
     "remeda": "^2.33.6",
     "zod": "^4.3.6"
   }
