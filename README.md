@@ -1,4 +1,4 @@
-# FieldShift 🌾🛰️
+# CropWise Ai 🌾🛰️
 
 > **NASA Space App Challenge 2025**
 > An AI-powered agricultural intelligence platform using NASA satellite data to generate smart crop planting recommendations.
