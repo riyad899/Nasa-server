@@ -3,6 +3,8 @@
 > **NASA Space App Challenge 2025**
 > An AI-powered agricultural intelligence platform using NASA satellite data to generate smart crop planting recommendations.
 
+> **Client site code:** https://github.com/riyad899/Nasa-Clint
+
 ---
 
 ## 🚀 What is FieldShift?

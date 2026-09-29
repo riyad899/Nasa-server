@@ -85,7 +85,7 @@ Then register the route in `src/app/routes/index.ts`.
 | IMERG         | NASA IMERG     | Spatial Rainfall              | ✅ Done     |
 | SMAP          | NASA SMAP      | Soil Moisture (Surface & Root)| ✅ Done     |
 | MODIS/VIIRS   | NASA MODIS     | NDVI (Vegetation Index)       | 🔜 Planned  |
-| AI Engine     | Internal       | Planting Recommendations      | 🔜 Planned  |
+| AnalyzeAi     | AI / RAG Engine| Integrated Planting Recs      | ✅ Done     |
 
 ---
 
@@ -96,6 +96,7 @@ Then register the route in `src/app/routes/index.ts`.
 - Data routes: `/api/v1/data/*`
 - Admin routes: `/api/v1/admin/*`
 - RAG routes: `/api/v1/rag/*`
+- AI Analysis routes: `/api/v1/ai/*`
 
 ---
 

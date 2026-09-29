@@ -2,7 +2,7 @@
 import { auth } from "../../lib/auth.js";
 import { fromNodeHeaders } from "better-auth/node";
 import { IncomingHttpHeaders } from "http";
-import { userStatus } from "@prisma/client";
+import { userStatus } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import status from "http-status";
 import AppError from "../../errorHelpers/appError.js";

@@ -1,0 +1,100 @@
+model Analysis {
+  id                 String                     @id
+  algorithmVersion   String
+  status             String
+  requestedAt        DateTime
+  completedAt        DateTime?
+  location           Json
+  crop               Json
+  farmingMethod      String
+  farmerPriority     Json?
+  baselinePeriod     Json
+  recentPeriod       Json
+  methodology        Json
+  recommendation     Json?
+  aiExplanation      Json?
+  warnings           Json
+  sources            AnalysisSource[]
+  observations       AnalysisObservation[]
+  yearlyCalculations AnalysisYearlyCalculation[]
+  auditLogs          AnalysisAuditLog[]
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  @@map("analyses")
+}
+
+model AnalysisSource {
+  id                  String   @id
+  analysisId          String
+  source              String
+  provider            String
+  dataset             String
+  endpoint            String
+  requestParameters   Json
+  variables           Json
+  units               Json
+  temporalResolution  String?
+  spatialResolution   String?
+  fetchStatus         String
+  responseTimeMs      Int?
+  requestedStart      String?
+  requestedEnd        String?
+  recordCount         Int?
+  coverage            Json?
+  missingData         Json?
+  sourceLink          String?
+  sourceVersion       String?
+  errorMessage        String?
+  analysis            Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId, source])
+  @@map("analysis_sources")
+}
+
+model AnalysisObservation {
+  id          String   @id
+  analysisId  String
+  source      String
+  observedAt  DateTime
+  variable    String
+  value       Float?
+  unit        String?
+  isValid     Boolean
+  qualityNote String?
+  raw         Json?
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId, source, observedAt])
+  @@map("analysis_observations")
+}
+
+model AnalysisYearlyCalculation {
+  id            String   @id
+  analysisId    String
+  periodType    String
+  year          Int
+  onsetDate     String?
+  dayOfYear     Int?
+  rainfallTotal Float?
+  valid         Boolean
+  missingDays   Int
+  confidence    String
+  calculation   Json
+  analysis      Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisId, periodType, year])
+  @@map("analysis_yearly_calculations")
+}
+
+model AnalysisAuditLog {
+  id         String   @id
+  analysisId String
+  event      String
+  details    Json
+  createdAt  DateTime @default(now())
+  analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId, createdAt])
+  @@map("analysis_audit_logs")
+}
