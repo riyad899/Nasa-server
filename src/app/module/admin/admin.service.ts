@@ -1,5 +1,5 @@
 import status from "http-status";
-import { Prisma, Role, userStatus } from "@prisma/client";
+import { Prisma, Role, userStatus } from "../../../generated/prisma/client.js";
 import AppError from "../../errorHelpers/appError.js";
 import { IRequestUser } from "../../interfaces/requestUser.interface.js";
 import { prisma } from "../../lib/prisma.js";

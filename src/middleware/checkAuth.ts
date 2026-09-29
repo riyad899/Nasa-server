@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextFunction, Request, Response } from "express";
-import { Role, userStatus } from "@prisma/client";
+import { Role, userStatus } from "../generated/prisma/client.js";
 import { CookieUtils } from "../app/utils/cookie.js";
 import { prisma } from "../app/lib/prisma.js";
 import AppError from "../app/errorHelpers/appError.js";

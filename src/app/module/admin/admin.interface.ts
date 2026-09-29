@@ -1,4 +1,4 @@
-import { userStatus } from "@prisma/client";
+import { userStatus } from "../../../generated/prisma/client.js";
 
 export interface IUpdateAdminPayload {
     admin?: {

@@ -6,6 +6,8 @@ import { NasaPowerRoute } from "../module/NasaPower/nasaPower.route.js";
 import { ImergRoute } from "../module/IMERG/imerg.route.js";
 import { SmapRoute } from "../module/SMAP/smap.route.js";
 import { AnalyzeAiRoute } from "../module/AnalyzeAi/analyzeAi.route.js";
+import { AmanOnsetRoute } from "../module/AmanOnset/amanOnset.route.js";
+import { AnalysisTransparencyRoute } from "../module/AnalysisTransparency/analysisTransparency.route.js";
 
 const router = Router();
 
@@ -16,5 +18,7 @@ router.use("/data", NasaPowerRoute);
 router.use("/data", ImergRoute);
 router.use("/data", SmapRoute);
 router.use("/ai", AnalyzeAiRoute);
+router.use("/ai", AmanOnsetRoute);
+router.use("/analyses", AnalysisTransparencyRoute);
 
 export const IndexRoute = router;
