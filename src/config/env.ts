@@ -71,6 +71,12 @@ const LoadEnvVarialbes = (): EnvConfig => {
         "Google_Client_Secret",
         "Google_callbackURL",
     ];
+
+    // Normalize aliases for Google OAuth env vars
+    process.env.Google_Client_ID = process.env.Google_Client_ID || process.env.GOOGLE_CLIENT_ID;
+    process.env.Google_Client_Secret = process.env.Google_Client_Secret || process.env.GOOGLE_CLIENT_SECRET;
+    process.env.Google_callbackURL = process.env.Google_callbackURL || process.env.GOOGLE_CALLBACK_URL || "http://localhost:5007/api/v1/auth/google/success";
+
     requiredEnvVars.forEach((varName) => {
         if (!process.env[varName]) {
             throw new AppError(`Missing required environment variable: ${varName}`, status.INTERNAL_SERVER_ERROR);

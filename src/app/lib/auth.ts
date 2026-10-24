@@ -139,27 +139,31 @@ export const auth = betterAuth({
     redirectURLs:{
         signIn : `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success`,
     },
-        trustedOrigins: [process.env.BETTER_AUTH_URL || "http://localhost:5000", envVars.FRONTEND_URL],
+    trustedOrigins: [
+        process.env.BETTER_AUTH_URL || "http://localhost:5007",
+        envVars.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:5007",
+    ],
     advanced: {
-        // disableCSRFCheck: true,
-        useSecureCookies : false,
-        cookies:{
-            state:{
-                attributes:{
-                    sameSite: "none",
-                    secure: true,
+        useSecureCookies: envVars.NODE_ENV === "production",
+        cookies: {
+            state: {
+                attributes: {
+                    sameSite: envVars.NODE_ENV === "production" ? "none" : "lax",
+                    secure: envVars.NODE_ENV === "production",
                     httpOnly: true,
                     path: "/",
-                }
+                },
             },
-            sessionToken:{
-                attributes:{
-                    sameSite: "none",
-                    secure: true,
+            sessionToken: {
+                attributes: {
+                    sameSite: envVars.NODE_ENV === "production" ? "none" : "lax",
+                    secure: envVars.NODE_ENV === "production",
                     httpOnly: true,
                     path: "/",
-                }
-            }
-        }
-    }
+                },
+            },
+        },
+    },
 });

@@ -123,9 +123,15 @@ const changePassword = catchAsync(async (req: Request, res: Response) => {
 const logoutUser = catchAsync(async (req: Request, res: Response) => {
   const betterAuthSessionToken = req.cookies["better-auth.session_token"];
   const result = await authService.logoutUser(betterAuthSessionToken);
-  CookieUtils.clearCookie(res, 'accessToken', { httpOnly: true, secure: true, sameSite: "none" });
-  CookieUtils.clearCookie(res, 'refreshToken', { httpOnly: true, secure: true, sameSite: "none" });
-  CookieUtils.clearCookie(res, 'better-auth.session_token', { httpOnly: true, secure: true, sameSite: "none" });
+  const cookieOpts = {
+    httpOnly: true,
+    secure: envVars.NODE_ENV === "production",
+    sameSite: (envVars.NODE_ENV === "production" ? "none" : "lax") as any,
+    path: "/",
+  };
+  CookieUtils.clearCookie(res, 'accessToken', cookieOpts);
+  CookieUtils.clearCookie(res, 'refreshToken', cookieOpts);
+  CookieUtils.clearCookie(res, 'better-auth.session_token', cookieOpts);
   sendResponse(res, { httpStatus: status.OK, success: true, message: "User logged out successfully", data: result });
 });
 
@@ -147,33 +153,52 @@ const googleLogin = catchAsync(async (req: Request, res: Response) => {
   const encodedRedirectPath = encodeURIComponent(redirectPath);
   const callbackURL = `${envVars.BETTER_AUTH_URL}/api/v1/auth/google/success?redirect=${encodedRedirectPath}`;
 
-  // Server-side: ask better-auth for the Google OAuth URL, then redirect the browser there
-  const result = await auth.api.signInSocial({
+  // Call better-auth with asResponse: true to capture and forward Set-Cookie headers (including better-auth.state)
+  const response = (await auth.api.signInSocial({
     body: {
       provider: "google",
       callbackURL,
     },
-  });
+    asResponse: true,
+  })) as any;
 
-  if (!result?.url) {
-    return res.status(500).json({ success: false, message: "Failed to get Google OAuth URL. Check your Google_Client_ID and Google_Client_Secret in .env" });
+  // Forward Set-Cookie headers so the client browser retains better-auth.state for OAuth CSRF validation
+  const setCookies = response.headers?.getSetCookie?.() || [];
+  if (Array.isArray(setCookies) && setCookies.length > 0) {
+    for (const cookie of setCookies) {
+      res.append("Set-Cookie", cookie);
+    }
+  } else {
+    const singleSetCookie = response.headers?.get?.("set-cookie");
+    if (singleSetCookie) {
+      res.setHeader("set-cookie", singleSetCookie);
+    }
   }
 
-  res.redirect(result.url);
+  const data = await response.json();
+
+  if (!data?.url) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get Google OAuth URL. Check your Google_Client_ID and Google_Client_Secret in .env",
+    });
+  }
+
+  res.redirect(data.url);
 });
 
 const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
-  const redirectPath = req.query.redirect as string || "/dashboard";
+  const redirectPath = (req.query.redirect as string) || "/dashboard";
   const sessionToken = req.cookies["better-auth.session_token"];
 
-  if (!sessionToken) return res.redirect(`${envVars.FRONTEND_URL}/login?error=oauth_failed`);
+  if (!sessionToken) return res.redirect(`${envVars.FRONTEND_URL}/signin?error=oauth_failed`);
 
   const session = await auth.api.getSession({
-    headers: { "Cookie": `better-auth.session_token=${sessionToken}` },
+    headers: { Cookie: `better-auth.session_token=${sessionToken}` },
   });
 
-  if (!session) return res.redirect(`${envVars.FRONTEND_URL}/login?error=no_session_found`);
-  if (session && !session.user) return res.redirect(`${envVars.FRONTEND_URL}/login?error=no_user_found`);
+  if (!session) return res.redirect(`${envVars.FRONTEND_URL}/signin?error=no_session_found`);
+  if (session && !session.user) return res.redirect(`${envVars.FRONTEND_URL}/signin?error=no_user_found`);
 
   const result = await authService.googleLoginSuccess(session);
   const { accessToken, refreshToken } = result;
@@ -187,8 +212,8 @@ const googleLoginSuccess = catchAsync(async (req: Request, res: Response) => {
 });
 
 const handleOAuthError = catchAsync((req: Request, res: Response) => {
-  const error = req.query.error as string || "oauth_failed";
-  res.redirect(`${envVars.FRONTEND_URL}/login?error=${error}`);
+  const error = (req.query.error as string) || "oauth_failed";
+  res.redirect(`${envVars.FRONTEND_URL}/signin?error=${encodeURIComponent(error)}`);
 });
 
 export const AuthController = {
