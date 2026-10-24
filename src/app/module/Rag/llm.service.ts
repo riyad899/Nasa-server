@@ -10,7 +10,7 @@ export class LLMService {
     this.apiKey = envVars.RAG.OPENROUTER_API_KEY || "";
     this.model =
       envVars.RAG.OPENROUTER_LLM_MODEL ||
-      "nvidia/nemotron-3-super-120b-a12b:free";
+      "nvidia/nemotron-3-ultra-550b-a55b:free";
     if (!this.apiKey) {
       console.warn(
         "⚠️ Warning: OPENROUTER_API_KEY is missing in .env. LLM calls will require an API key."
@@ -80,45 +80,64 @@ Do NOT include markdown fences like \`\`\`json. Return pure JSON only.`;
         bodyPayload.response_format = { type: "json_object" };
       }
 
-      const response = await fetch(`${this.apiUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://nasa-space-app.local",
-          "X-Title": "NASA Space Apps RAG Service",
-        },
-        body: JSON.stringify(bodyPayload),
-      });
+      const candidateModels = [
+        this.model,
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "nvidia/nemotron-3-ultra-550b-a55b",
+        "nvidia/nemotron-3.5-lightning:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "poolside/laguna-s-2.1:free",
+        "nvidia/nemotron-3.5-super-vl:free",
+      ].filter((m, i, arr) => Boolean(m) && arr.indexOf(m) === i && !m.includes("mistral-7b") && !m.includes("llama-3.3") && !m.includes("gemma-4"));
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMsg =
-          errorData?.error?.message || response.statusText || "unknown error";
-        throw new Error(`OpenRouter API error: ${response.status} - ${errorMsg}`);
+
+      let lastError: any = null;
+
+      for (const currentModel of candidateModels) {
+        try {
+          bodyPayload.model = currentModel;
+          const response = await fetch(`${this.apiUrl}/chat/completions`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://nasa-space-app.local",
+              "X-Title": "NASA Space Apps RAG Service",
+            },
+            body: JSON.stringify(bodyPayload),
+            signal: AbortSignal.timeout(12000),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            const errorMsg = errorData?.error?.message || response.statusText || "unknown error";
+            lastError = new Error(`OpenRouter API error (${currentModel}): ${response.status} - ${errorMsg}`);
+            continue;
+          }
+
+          const data = (await response.json()) as any;
+          if (!Array.isArray(data.choices) || data.choices.length === 0) {
+            lastError = new Error(`No response choices returned by ${currentModel}`);
+            continue;
+          }
+
+          const content = data.choices[0]?.message?.content;
+          if (typeof content !== "string" || content.trim().length === 0) {
+            lastError = new Error(`Empty response from ${currentModel}`);
+            continue;
+          }
+
+          return content;
+        } catch (fetchErr) {
+          lastError = fetchErr;
+        }
       }
 
-      const data = (await response.json()) as any;
-      if (!Array.isArray(data.choices) || data.choices.length === 0) {
-        const providerError = data.error?.message || data.error?.code;
-        const providerMessage = providerError
-          ? `: ${providerError}`
-          : data.provider
-            ? ` from provider ${data.provider}`
-            : "";
-        throw new Error(`No response choices returned by LLM model${providerMessage}`);
-      }
-
-      const content = data.choices[0]?.message?.content;
-      if (typeof content !== "string" || content.trim().length === 0) {
-        const finishReason = data.choices[0]?.finish_reason || "unknown";
-        throw new Error(`LLM returned an empty response (finish reason: ${finishReason})`);
-      }
-
-      return content;
+      throw lastError || new Error("All LLM candidate models failed");
     } catch (error) {
       console.error("Error generating LLM response:", error);
       throw error;
     }
   }
+
 }

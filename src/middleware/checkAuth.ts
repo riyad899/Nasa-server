@@ -75,3 +75,57 @@ export const checkAuth = (...authRoles: Role[]) => async (req: Request, res: Res
         next(error);
     }
 };
+
+export const optionalAuth = () => async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const sessionToken = CookieUtils.getCookie(req, "better-auth.session_token") || (req.headers["x-session-token"] as string);
+        const authHeader = req.headers.authorization;
+        const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+        const accessToken = CookieUtils.getCookie(req, "accessToken") || bearerToken;
+
+        let authenticatedUser: { userId: string; role: Role; email: string } | null = null;
+
+        if (sessionToken) {
+            const sessionExists = await prisma.session.findFirst({
+                where: {
+                    token: sessionToken,
+                    expiresAt: {
+                        gt: new Date(),
+                    },
+                },
+                include: {
+                    user: true,
+                },
+            });
+
+            if (sessionExists && sessionExists.user && !sessionExists.user.isdeleted && sessionExists.user.status === userStatus.ACTIVE) {
+                authenticatedUser = {
+                    userId: sessionExists.user.id,
+                    role: sessionExists.user.role as Role,
+                    email: sessionExists.user.email,
+                };
+            }
+        }
+
+        if (!authenticatedUser && accessToken) {
+            const verifiedToken = jwtUtils.verifyToken(accessToken, envVars.ACCESS_TOKEN_SECRET);
+            if (verifiedToken.success && verifiedToken.data) {
+                const data = verifiedToken.data as any;
+                authenticatedUser = {
+                    userId: data.userId,
+                    role: data.role as Role,
+                    email: data.email,
+                };
+            }
+        }
+
+        if (authenticatedUser) {
+            req.user = authenticatedUser;
+        }
+
+        next();
+    } catch {
+        // Guest user, silently continue without user context
+        next();
+    }
+};

@@ -8,6 +8,9 @@ import { auth } from './app/lib/auth.js';
 import path from 'path';
 import { envVars } from './config/env.js';
 import cors from "cors";
+import { DeviceRoute } from './app/module/Device/device.route.js';
+import { ProboyRoute } from './app/module/Proboy/proboy.route.js';
+import { prisma } from './app/lib/prisma.js';
 
 const app:Application = express();
 
@@ -24,21 +27,49 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 app.use("/api/auth", toNodeHandler(auth));
+
+// Firmware compatibility and health checks
+app.get(['/health', '/api/health'], async (req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({
+      success: true,
+      status: "HEALTHY",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      database: "connected",
+      service: "CropWise AI API",
+    });
+  } catch (err: any) {
+    res.status(503).json({
+      success: false,
+      status: "UNHEALTHY",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      database: "disconnected",
+      error: err?.message || "Database check failed",
+    });
+  }
+});
+
+app.use("/api/device", DeviceRoute);
+app.use("/api/proboy", ProboyRoute);
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
-    message: 'E-Commerce API is running',
+    message: 'CropWise AI Backend is running',
     version: '1.0.0',
     docs: '/api/v1',
   });
 });
 
-app.use("/api/v1",IndexRoute);
-
+app.use("/api/v1", IndexRoute);
 
 app.use(globalErrorHandler);
 app.use(notFoundHandler);
+
 
 export default app;

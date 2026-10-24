@@ -8,6 +8,8 @@ import { SmapRoute } from "../module/SMAP/smap.route.js";
 import { AnalyzeAiRoute } from "../module/AnalyzeAi/analyzeAi.route.js";
 import { AmanOnsetRoute } from "../module/AmanOnset/amanOnset.route.js";
 import { AnalysisTransparencyRoute } from "../module/AnalysisTransparency/analysisTransparency.route.js";
+import { DeviceRoute } from "../module/Device/device.route.js";
+import { ProboyRoute } from "../module/Proboy/proboy.route.js";
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use("/data", SmapRoute);
 router.use("/ai", AnalyzeAiRoute);
 router.use("/ai", AmanOnsetRoute);
 router.use("/analyses", AnalysisTransparencyRoute);
+router.use("/device", DeviceRoute);
+router.use("/proboy", ProboyRoute);
 
 export const IndexRoute = router;

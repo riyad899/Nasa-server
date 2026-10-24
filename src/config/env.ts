@@ -27,6 +27,8 @@ interface EnvConfig {
     Google_Client_ID: string;
     Google_Client_Secret: string;
     Google_callbackURL: string;
+    ESP32_SERVER_API_URL: string;
+    ESP32_API_URL: string;
     RAG: {
         OPENROUTER_API_KEY: string;
         OPENROUTER_EMBEDDING_MODEL: string;
@@ -77,6 +79,10 @@ const LoadEnvVarialbes = (): EnvConfig => {
     process.env.Google_Client_Secret = process.env.Google_Client_Secret || process.env.GOOGLE_CLIENT_SECRET;
     process.env.Google_callbackURL = process.env.Google_callbackURL || process.env.GOOGLE_CALLBACK_URL || "http://localhost:5007/api/v1/auth/google/success";
 
+    // Normalize ESP32 IoT Server API URL
+    process.env.ESP32_SERVER_API_URL = process.env.ESP32_SERVER_API_URL || process.env.ESP32_API_URL || "https://esp32-iot-cloude-connect.vercel.app";
+    process.env.ESP32_API_URL = process.env.ESP32_API_URL || process.env.ESP32_SERVER_API_URL;
+
     requiredEnvVars.forEach((varName) => {
         if (!process.env[varName]) {
             throw new AppError(`Missing required environment variable: ${varName}`, status.INTERNAL_SERVER_ERROR);
@@ -107,10 +113,12 @@ const LoadEnvVarialbes = (): EnvConfig => {
         Google_Client_ID: process.env.Google_Client_ID as string,
         Google_Client_Secret: process.env.Google_Client_Secret as string,
         Google_callbackURL: process.env.Google_callbackURL as string,
+        ESP32_SERVER_API_URL: process.env.ESP32_SERVER_API_URL as string,
+        ESP32_API_URL: process.env.ESP32_API_URL as string,
         RAG: {
             OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
             OPENROUTER_EMBEDDING_MODEL: process.env.OPENROUTER_EMBEDDING_MODEL || "nvidia/llama-nemotron-embed-vl-1b-v2:free",
-            OPENROUTER_LLM_MODEL: process.env.OPENROUTER_LLM_MODEL || "nvidia/nemotron-3-super-120b-a12b:free",
+            OPENROUTER_LLM_MODEL: process.env.OPENROUTER_LLM_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
         },
         IMERG: {
             EARTHDATA_TOKEN: process.env.EARTHDATA_TOKEN || process.env.NASA_EARTHDATA_TOKEN || "",

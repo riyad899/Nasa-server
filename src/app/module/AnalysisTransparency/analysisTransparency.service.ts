@@ -40,4 +40,128 @@ const getObservationsCsv = async (analysisId: string, query: IObservationQuery):
   return rows.join("\n");
 };
 
-export const AnalysisTransparencyService = { getAnalysis, getObservations, getObservationsCsv };
+const saveAnalysisHistory = async (data: any, userId: string) => {
+  const analysisId = data.analysisId || `analysis_${Date.now()}`;
+  
+  // 1. Upsert ClimateAnalysisHistory
+  const history = await prisma.climateAnalysisHistory.upsert({
+    where: { id: analysisId },
+    create: {
+      id: analysisId,
+      userId,
+      farmId: data.farmId || null,
+      location: data.location || {},
+      crop: data.crop || {},
+      farmingMethod: data.farmingMethod || null,
+      farmerPriority: data.farmerPriority || null,
+      baselinePeriod: data.baselinePeriod || null,
+      recentPeriod: data.recentPeriod || null,
+      methodology: data.methodology || null,
+      results: data.results || {},
+      shiftDays: data.shiftDays != null ? Number(data.shiftDays) : null,
+      plantingWindowStart: data.plantingWindowStart || null,
+      plantingWindowEnd: data.plantingWindowEnd || null,
+      confidence: data.confidence || "moderate",
+      dataSources: Array.isArray(data.dataSources) ? data.dataSources : ["NASA POWER"],
+      status: "COMPLETED",
+    },
+    update: {
+      userId,
+      farmId: data.farmId || null,
+      location: data.location || {},
+      crop: data.crop || {},
+      results: data.results || {},
+      shiftDays: data.shiftDays != null ? Number(data.shiftDays) : null,
+      plantingWindowStart: data.plantingWindowStart || null,
+      plantingWindowEnd: data.plantingWindowEnd || null,
+      confidence: data.confidence || "moderate",
+      dataSources: Array.isArray(data.dataSources) ? data.dataSources : ["NASA POWER"],
+      status: "COMPLETED",
+    },
+  });
+
+  // 2. Persist Recommendation if provided
+  if (data.recommendationText || data.whyThisResult || data.farmerGuidance) {
+    const existingRec = await prisma.recommendationHistory.findFirst({
+      where: { climateAnalysisId: analysisId },
+    });
+
+    if (existingRec) {
+      await prisma.recommendationHistory.update({
+        where: { id: existingRec.id },
+        data: {
+          recommendationText: data.recommendationText || existingRec.recommendationText,
+          cropType: data.cropType || data.crop?.cropType || data.crop?.currentCrop,
+          plantingWindowStart: data.plantingWindowStart,
+          plantingWindowEnd: data.plantingWindowEnd,
+          explanation: data.explanation,
+          farmerGuidance: data.farmerGuidance,
+          whyThisResult: data.whyThisResult,
+        },
+      });
+    } else {
+      await prisma.recommendationHistory.create({
+        data: {
+          userId,
+          farmId: data.farmId || null,
+          climateAnalysisId: analysisId,
+          cropType: data.cropType || data.crop?.cropType || data.crop?.currentCrop,
+          plantingWindowStart: data.plantingWindowStart,
+          plantingWindowEnd: data.plantingWindowEnd,
+          recommendationText: data.recommendationText || "Recommended planting window based on climate analysis",
+          explanation: data.explanation,
+          farmerGuidance: data.farmerGuidance,
+          whyThisResult: data.whyThisResult,
+        },
+      });
+    }
+  }
+
+  return history;
+};
+
+const getUserHistory = async (userId: string) => {
+  return prisma.climateAnalysisHistory.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      recommendations: true,
+    },
+    take: 20,
+  });
+};
+
+const getLatestUserAnalysis = async (userId: string) => {
+  return prisma.climateAnalysisHistory.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      recommendations: true,
+    },
+  });
+};
+
+const deleteAnalysis = async (analysisId: string, userId: string) => {
+  const record = await prisma.climateAnalysisHistory.findUnique({
+    where: { id: analysisId },
+  });
+  if (!record) {
+    throw new AppError("Analysis not found", status.NOT_FOUND);
+  }
+  if (record.userId !== userId) {
+    throw new AppError("Forbidden: Cannot delete analysis belonging to another user", status.FORBIDDEN);
+  }
+  return prisma.climateAnalysisHistory.delete({
+    where: { id: analysisId },
+  });
+};
+
+export const AnalysisTransparencyService = {
+  getAnalysis,
+  getObservations,
+  getObservationsCsv,
+  saveAnalysisHistory,
+  getUserHistory,
+  getLatestUserAnalysis,
+  deleteAnalysis,
+};

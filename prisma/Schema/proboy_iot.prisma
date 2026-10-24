@@ -1,0 +1,198 @@
+model Farm {
+  id          String   @id @default(uuid(7))
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  district    String?
+  latitude    Float?
+  longitude   Float?
+  cropTypes   String[] @default([])
+  soilType    String?
+  areaAcres   Float?
+  irrigationType String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  climateAnalyses ClimateAnalysisHistory[]
+  recommendations RecommendationHistory[]
+  devices         Device[]
+  userKnowledge   UserKnowledge[]
+
+  @@index([userId])
+  @@map("farms")
+}
+
+model ClimateAnalysisHistory {
+  id                String   @id
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmId            String?
+  farm              Farm?    @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  guestSessionId    String?
+  location          Json
+  crop              Json
+  farmingMethod     String?
+  farmerPriority    Json?
+  baselinePeriod    Json?
+  recentPeriod      Json?
+  methodology       Json?
+  results           Json
+  shiftDays         Int?
+  plantingWindowStart String?
+  plantingWindowEnd   String?
+  confidence        String?
+  dataSources       String[] @default([])
+  status            String   @default("COMPLETED")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  recommendations   RecommendationHistory[]
+
+  @@index([userId])
+  @@index([guestSessionId])
+  @@index([createdAt])
+  @@map("climate_analysis_history")
+}
+
+model RecommendationHistory {
+  id                  String   @id @default(uuid(7))
+  userId              String?
+  user                User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmId              String?
+  farm                Farm?    @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  climateAnalysisId   String?
+  climateAnalysis     ClimateAnalysisHistory? @relation(fields: [climateAnalysisId], references: [id], onDelete: Cascade)
+  cropType            String?
+  plantingWindowStart String?
+  plantingWindowEnd   String?
+  recommendationText  String
+  explanation         String?
+  farmerGuidance      Json?
+  supportingEvidence  Json?
+  whyThisResult       Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId])
+  @@index([climateAnalysisId])
+  @@map("recommendation_history")
+}
+
+model UserKnowledge {
+  id          String   @id @default(uuid(7))
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmId      String?
+  farm        Farm?    @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  sourceType  String   // "USER_FACT", "FARM_NOTE", "CONVERSATION_MEMORY", "HISTORICAL_ANALYSIS"
+  sourceId    String?
+  title       String
+  content     String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, sourceType])
+  @@map("user_knowledge")
+}
+
+model ProboyConversation {
+  id              String   @id @default(uuid(7))
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestSessionId  String?
+  title           String   @default("New Agriculture Chat")
+  status          String   @default("ACTIVE")
+  lastMessageAt   DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  messages        ProboyMessage[]
+
+  @@index([userId])
+  @@index([guestSessionId])
+  @@index([lastMessageAt])
+  @@map("proboy_conversations")
+}
+
+model ProboyMessage {
+  id              String   @id @default(uuid(7))
+  conversationId  String
+  conversation    ProboyConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role            String   // "user", "assistant", "tool"
+  content         String
+  sources         Json?
+  contextStatus   Json?
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("proboy_messages")
+}
+
+model Device {
+  id                String   @id @default(uuid(7))
+  deviceId          String   @unique
+  ownerUserId       String?
+  ownerUser         User?    @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  farmId            String?
+  farm              Farm?    @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  name              String   @default("ESP32 Master")
+  deviceType        String   @default("ESP32-S3")
+  location          Json?
+  lastSeenAt        DateTime?
+  connectionStatus  String   @default("offline")
+  relay1State       String   @default("OFF") // "ON" | "OFF"
+  relay2State       String   @default("OFF") // "ON" | "OFF"
+  relay1Name        String   @default("Water Motor")
+  relay2Name        String   @default("Solenoid Valve")
+  config            Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  telemetries       DeviceTelemetry[]
+  activityLogs      DeviceActivityLog[]
+
+  @@index([ownerUserId])
+  @@map("devices")
+}
+
+model DeviceTelemetry {
+  id              String   @id @default(uuid(7))
+  deviceId        String
+  device          Device   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  temperature     Float?
+  humidity        Float?
+  soilMoistureRaw Int?
+  rainSensorRaw   Int?
+  gpsValid        Boolean  @default(false)
+  latitude        Float?
+  longitude       Float?
+  altitude        Float?
+  satellites      Int?
+  rawPayload      Json?
+  recordedAt      DateTime @default(now())
+  receivedAt      DateTime @default(now())
+
+  @@index([deviceId, recordedAt])
+  @@map("device_telemetry")
+}
+
+model DeviceActivityLog {
+  id              String   @id @default(uuid(7))
+  deviceId        String
+  device          Device   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  relay           String   // "Relay 1" | "Relay 2" | "ALL"
+  action          String   // "ON" | "OFF"
+  source          String   // "Manual", "Timer", "Automation", "Voice Assistant"
+  triggerDetails  String
+  duration        String?
+  status          String   @default("Success")
+  timestamp       DateTime @default(now())
+
+  @@index([deviceId, timestamp])
+  @@index([userId])
+  @@map("device_activity_logs")
+}
