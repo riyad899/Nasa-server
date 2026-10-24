@@ -38,4 +38,5 @@ export interface IAmanOnsetResponse {
 	shift: { medianDays: number | null; direction: "later" | "earlier" | "no_clear_shift" | "insufficient_data"; p25ToP75Days: { lower: number; upper: number } | null };
 	transplantingWindow: { start: string | null; end: string | null; confidence: "moderate" | "insufficient_data" };
 	explanation: string; farmerGuidance: string[]; dataSources: string[]; warnings: string[];
+	cached?: boolean;
 }

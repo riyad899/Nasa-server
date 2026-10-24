@@ -4,18 +4,26 @@ import { prisma } from "../../lib/prisma.js";
 import type { IObservationPage, IObservationQuery } from "./analysisTransparency.interface.js";
 
 const getAnalysis = async (analysisId: string) => {
-  const analysis = await prisma.analysis.findUnique({
+  let analysis = await prisma.analysis.findUnique({
     where: { id: analysisId },
     include: { sources: true, yearlyCalculations: true, auditLogs: { orderBy: { createdAt: "desc" } } },
   });
+  if (!analysis && analysisId.includes("_")) {
+    const baseId = analysisId.split("_").slice(0, 2).join("_");
+    analysis = await prisma.analysis.findUnique({
+      where: { id: baseId },
+      include: { sources: true, yearlyCalculations: true, auditLogs: { orderBy: { createdAt: "desc" } } },
+    });
+  }
   if (!analysis) throw new AppError("Analysis not found", status.NOT_FOUND);
   return analysis;
 };
 
 const getObservations = async (analysisId: string, query: IObservationQuery): Promise<IObservationPage> => {
-  await getAnalysis(analysisId);
+  const analysis = await getAnalysis(analysisId);
+  const targetId = analysis.id;
   const where = {
-    analysisId,
+    analysisId: targetId,
     ...(query.source ? { source: query.source } : {}),
     ...(query.variable ? { variable: query.variable } : {}),
     ...(query.startDate || query.endDate ? { observedAt: { ...(query.startDate ? { gte: new Date(`${query.startDate}T00:00:00.000Z`) } : {}), ...(query.endDate ? { lte: new Date(`${query.endDate}T23:59:59.999Z`) } : {}) } } : {}),
@@ -41,13 +49,22 @@ const getObservationsCsv = async (analysisId: string, query: IObservationQuery):
 };
 
 const saveAnalysisHistory = async (data: any, userId: string) => {
-  const analysisId = data.analysisId || `analysis_${Date.now()}`;
+  let historyId = data.analysisId || `analysis_${Date.now()}`;
+  if (data.analysisId) {
+    const existing = await prisma.climateAnalysisHistory.findUnique({
+      where: { id: historyId },
+      select: { userId: true },
+    });
+    if (existing && existing.userId && existing.userId !== userId) {
+      historyId = `${data.analysisId}_${userId.slice(0, 8)}`;
+    }
+  }
   
   // 1. Upsert ClimateAnalysisHistory
   const history = await prisma.climateAnalysisHistory.upsert({
-    where: { id: analysisId },
+    where: { id: historyId },
     create: {
-      id: analysisId,
+      id: historyId,
       userId,
       farmId: data.farmId || null,
       location: data.location || {},
@@ -83,7 +100,7 @@ const saveAnalysisHistory = async (data: any, userId: string) => {
   // 2. Persist Recommendation if provided
   if (data.recommendationText || data.whyThisResult || data.farmerGuidance) {
     const existingRec = await prisma.recommendationHistory.findFirst({
-      where: { climateAnalysisId: analysisId },
+      where: { climateAnalysisId: historyId },
     });
 
     if (existingRec) {
@@ -104,7 +121,7 @@ const saveAnalysisHistory = async (data: any, userId: string) => {
         data: {
           userId,
           farmId: data.farmId || null,
-          climateAnalysisId: analysisId,
+          climateAnalysisId: historyId,
           cropType: data.cropType || data.crop?.cropType || data.crop?.currentCrop,
           plantingWindowStart: data.plantingWindowStart,
           plantingWindowEnd: data.plantingWindowEnd,

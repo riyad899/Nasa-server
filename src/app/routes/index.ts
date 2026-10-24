@@ -9,7 +9,7 @@ import { AnalyzeAiRoute } from "../module/AnalyzeAi/analyzeAi.route.js";
 import { AmanOnsetRoute } from "../module/AmanOnset/amanOnset.route.js";
 import { AnalysisTransparencyRoute } from "../module/AnalysisTransparency/analysisTransparency.route.js";
 import { DeviceRoute } from "../module/Device/device.route.js";
-import { ProboyRoute } from "../module/Proboy/proboy.route.js";
+import { CropWiseAiRoute } from "../module/CropWiseAi/cropwise.route.js";
 
 const router = Router();
 
@@ -23,6 +23,8 @@ router.use("/ai", AnalyzeAiRoute);
 router.use("/ai", AmanOnsetRoute);
 router.use("/analyses", AnalysisTransparencyRoute);
 router.use("/device", DeviceRoute);
-router.use("/proboy", ProboyRoute);
+router.use("/cropwise", CropWiseAiRoute);
+router.use("/cropwise-ai", CropWiseAiRoute);
+router.use("/proboy", CropWiseAiRoute);
 
 export const IndexRoute = router;

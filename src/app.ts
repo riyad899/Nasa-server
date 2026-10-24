@@ -9,7 +9,7 @@ import path from 'path';
 import { envVars } from './config/env.js';
 import cors from "cors";
 import { DeviceRoute } from './app/module/Device/device.route.js';
-import { ProboyRoute } from './app/module/Proboy/proboy.route.js';
+import { CropWiseAiRoute } from './app/module/CropWiseAi/cropwise.route.js';
 import { prisma } from './app/lib/prisma.js';
 
 const app:Application = express();
@@ -55,7 +55,9 @@ app.get(['/health', '/api/health'], async (req: Request, res: Response) => {
 });
 
 app.use("/api/device", DeviceRoute);
-app.use("/api/proboy", ProboyRoute);
+app.use("/api/cropwise", CropWiseAiRoute);
+app.use("/api/cropwise-ai", CropWiseAiRoute);
+app.use("/api/proboy", CropWiseAiRoute);
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({

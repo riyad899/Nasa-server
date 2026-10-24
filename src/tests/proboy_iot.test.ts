@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { DeviceService } from "../app/module/Device/device.service.js";
 import { AnalysisTransparencyService } from "../app/module/AnalysisTransparency/analysisTransparency.service.js";
-import { ProboyService } from "../app/module/Proboy/proboy.service.js";
+import { CropWiseAiService } from "../app/module/CropWiseAi/cropwise.service.js";
 import { prisma } from "../app/lib/prisma.js";
 
 async function runTests() {
-  console.log("🚀 Starting Proboy AI & IoT Verification Test Suite...\n");
+  console.log("🚀 Starting CropWise AI & IoT Verification Test Suite...\n");
   let passed = 0;
   let failed = 0;
 
@@ -94,11 +93,11 @@ async function runTests() {
     const otherUserHistory = await AnalysisTransparencyService.getUserHistory("other_user_id");
     assert(otherUserHistory.length === 0, "User isolation verified: other users cannot access private analysis history");
 
-    // ─── Test 4: Proboy AI Guest Mode vs Authenticated Mode ─────────────────
-    console.log("\n--- Test 4: Proboy AI Context & Privacy System ---");
+    // ─── Test 4: CropWise AI Guest Mode vs Authenticated Mode ─────────────────
+    console.log("\n--- Test 4: CropWise AI Context & Privacy System ---");
 
     // Mode B: Guest Chat
-    const guestResponse = await ProboyService.handleChat({
+    const guestResponse = await CropWiseAiService.handleChat({
       message: "আমার ডিভাইসের অবস্থা কী এবং কোন ফসল ভালো হবে?",
     });
     assert(guestResponse.contextStatus.userAuthenticated === false, "Guest request correctly tagged userAuthenticated: false");
@@ -106,7 +105,7 @@ async function runTests() {
     assert(Boolean(guestResponse.message.content), "Guest receives grounded answer with privacy notice");
 
     // Mode A: Authenticated Chat with user's saved analysis
-    const authResponse = await ProboyService.handleChat({
+    const authResponse = await CropWiseAiService.handleChat({
       message: "আমার আগের Climate Analysis অনুযায়ী এখন কী করা উচিত?",
     }, testUserId);
     assert(authResponse.contextStatus.userAuthenticated === true, "Authenticated request correctly tagged userAuthenticated: true");
