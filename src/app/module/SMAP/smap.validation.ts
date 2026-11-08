@@ -14,16 +14,24 @@ export const smapQuerySchema = z
     // Latitude aliases
     latitudeMin: z.coerce.number().min(-90).max(90).optional(),
     latMin: z.coerce.number().min(-90).max(90).optional(),
+    bottomLeftLat: z.coerce.number().min(-90).max(90).optional(),
+    "Bottom-Left Lat": z.coerce.number().min(-90).max(90).optional(),
 
     latitudeMax: z.coerce.number().min(-90).max(90).optional(),
     latMax: z.coerce.number().min(-90).max(90).optional(),
+    upperRightLat: z.coerce.number().min(-90).max(90).optional(),
+    "Upper-Right Lat": z.coerce.number().min(-90).max(90).optional(),
 
     // Longitude aliases
     longitudeMin: z.coerce.number().min(-180).max(180).optional(),
     lonMin: z.coerce.number().min(-180).max(180).optional(),
+    bottomLeftLon: z.coerce.number().min(-180).max(180).optional(),
+    "Bottom-Left Lon": z.coerce.number().min(-180).max(180).optional(),
 
     longitudeMax: z.coerce.number().min(-180).max(180).optional(),
     lonMax: z.coerce.number().min(-180).max(180).optional(),
+    upperRightLon: z.coerce.number().min(-180).max(180).optional(),
+    "Upper-Right Lon": z.coerce.number().min(-180).max(180).optional(),
 
     // Date aliases
     start: z.string().optional(),
@@ -41,10 +49,26 @@ export const smapQuerySchema = z
       .default(false),
   })
   .transform((data) => {
-    const latMin = data.latitudeMin ?? data.latMin;
-    const latMax = data.latitudeMax ?? data.latMax;
-    const lonMin = data.longitudeMin ?? data.lonMin;
-    const lonMax = data.longitudeMax ?? data.lonMax;
+    const latMin =
+      data.latitudeMin ??
+      data.latMin ??
+      data.bottomLeftLat ??
+      data["Bottom-Left Lat"];
+    const latMax =
+      data.latitudeMax ??
+      data.latMax ??
+      data.upperRightLat ??
+      data["Upper-Right Lat"];
+    const lonMin =
+      data.longitudeMin ??
+      data.lonMin ??
+      data.bottomLeftLon ??
+      data["Bottom-Left Lon"];
+    const lonMax =
+      data.longitudeMax ??
+      data.lonMax ??
+      data.upperRightLon ??
+      data["Upper-Right Lon"];
 
     const rawStart = data.start ?? data.startDate ?? "";
     const rawEnd = data.end ?? data.endDate ?? "";
@@ -149,3 +173,95 @@ export const smapQuerySchema = z
   });
 
 export type SmapQuerySchemaType = z.infer<typeof smapQuerySchema>;
+
+// ─── Historical & 2-Year Ingestion Schemas ─────────────────────────────────────
+
+const flexibleSmapDateQuery = z
+  .string({ error: "Date is required" })
+  .transform((val) => val.replaceAll("-", "").trim())
+  .refine((val) => /^\d{8}$/.test(val), { message: "Date must be YYYYMMDD or YYYY-MM-DD" });
+
+function parseSmapDate(value: string): Date | null {
+  const clean = value.replaceAll("-", "").trim();
+  if (clean.length !== 8) return null;
+  const date = new Date(`${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10).replaceAll("-", "") !== clean ? null : date;
+}
+
+export const smapHistoricalFetchSchema = z
+  .object({
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
+    latitudeMin: z.coerce.number().min(-90).max(90).optional(),
+    latitudeMax: z.coerce.number().min(-90).max(90).optional(),
+    longitudeMin: z.coerce.number().min(-180).max(180).optional(),
+    longitudeMax: z.coerce.number().min(-180).max(180).optional(),
+    district: z.string().trim().min(2).optional(),
+    start: flexibleSmapDateQuery,
+    end: flexibleSmapDateQuery,
+    forceRefresh: z.union([z.boolean(), z.enum(["true", "false"]).transform((v) => v === "true")]).optional().default(false),
+  })
+  .superRefine((val, ctx) => {
+    const start = parseSmapDate(val.start);
+    const end = parseSmapDate(val.end);
+    if (!start || !end) {
+      ctx.addIssue({ code: "custom", message: "Invalid start or end date", path: ["start"] });
+      return;
+    }
+    if (start > end) {
+      ctx.addIssue({ code: "custom", message: "start must be before or equal to end", path: ["end"] });
+      return;
+    }
+    const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays > 731) {
+      ctx.addIssue({ code: "custom", message: "Requested date range exceeds 2 years (maximum 731 days)", path: ["end"] });
+    }
+    if (val.latitudeMin !== undefined && val.latitudeMax !== undefined && val.latitudeMin >= val.latitudeMax) {
+      ctx.addIssue({ code: "custom", message: "latitudeMin must be less than latitudeMax", path: ["latitudeMin"] });
+    }
+    if (val.longitudeMin !== undefined && val.longitudeMax !== undefined && val.longitudeMin >= val.longitudeMax) {
+      ctx.addIssue({ code: "custom", message: "longitudeMin must be less than longitudeMax", path: ["longitudeMin"] });
+    }
+  });
+
+export const smapHistoricalQuerySchema = z
+  .object({
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
+    latitudeMin: z.coerce.number().min(-90).max(90).optional(),
+    latitudeMax: z.coerce.number().min(-90).max(90).optional(),
+    longitudeMin: z.coerce.number().min(-180).max(180).optional(),
+    longitudeMax: z.coerce.number().min(-180).max(180).optional(),
+    district: z.string().trim().min(2).optional(),
+    start: flexibleSmapDateQuery,
+    end: flexibleSmapDateQuery,
+    mode: z.enum(["summary", "daily", "monthly", "seasonal", "full"]).optional().default("full"),
+    autoFetch: z.union([z.boolean(), z.enum(["true", "false"]).transform((v) => v === "true")]).optional().default(true),
+  })
+  .superRefine((val, ctx) => {
+    const start = parseSmapDate(val.start);
+    const end = parseSmapDate(val.end);
+    if (!start || !end) {
+      ctx.addIssue({ code: "custom", message: "Invalid start or end date", path: ["start"] });
+      return;
+    }
+    if (start > end) {
+      ctx.addIssue({ code: "custom", message: "start must be before or equal to end", path: ["end"] });
+      return;
+    }
+    const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays > 731) {
+      ctx.addIssue({ code: "custom", message: "Requested date range exceeds 2 years (maximum 731 days)", path: ["end"] });
+    }
+  });
+
+export const smapHistoricalStatusSchema = z.object({
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  latitudeMin: z.coerce.number().min(-90).max(90).optional(),
+  latitudeMax: z.coerce.number().min(-90).max(90).optional(),
+  longitudeMin: z.coerce.number().min(-180).max(180).optional(),
+  longitudeMax: z.coerce.number().min(-180).max(180).optional(),
+  district: z.string().trim().min(2).optional(),
+});
+

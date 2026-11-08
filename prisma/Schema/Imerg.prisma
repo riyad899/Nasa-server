@@ -1,0 +1,49 @@
+model ImergRegionalDataset {
+  id                 String              @id @default(uuid(7))
+  regionKey          String
+  source             String              @default("NASA_GPM_IMERG")
+  latitudeMin        Float
+  latitudeMax        Float
+  longitudeMin       Float
+  longitudeMax       Float
+  startDate          String
+  endDate            String
+  requestedDays      Int
+  returnedDays       Int
+  missingDays        Int
+  coveragePercentage Float
+  status             String              @default("COMPLETED")
+  metadata           Json?
+  fetchedAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  records            ImergDailyRecord[]
+
+  @@index([regionKey])
+  @@index([regionKey, startDate, endDate])
+  @@map("imerg_regional_datasets")
+}
+
+model ImergDailyRecord {
+  id           String                @id @default(uuid(7))
+  datasetId    String?
+  regionKey    String
+  date         String                // YYYYMMDD
+  observedAt   DateTime
+  meanRainfall Float?                // mm/day
+  minRainfall  Float?
+  maxRainfall  Float?
+  validCells   Int?
+  missingCells Int?
+  isRainy      Boolean               @default(false)
+  isHeavyRain  Boolean               @default(false)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  dataset      ImergRegionalDataset? @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+
+  @@unique([regionKey, date])
+  @@index([regionKey, observedAt])
+  @@index([date])
+  @@map("imerg_daily_records")
+}

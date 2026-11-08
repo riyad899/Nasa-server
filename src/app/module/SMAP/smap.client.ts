@@ -16,17 +16,14 @@ export class SmapClient {
 
   private static getAuthHeaders(): Record<string, string> {
     const token = envVars.SMAP.EARTHDATA_TOKEN || envVars.IMERG.EARTHDATA_TOKEN;
-    if (!token) {
-      throw new AppError(
-        "NASA Earthdata token is missing. Please configure NASA_EARTHDATA_TOKEN in .env",
-        status.UNAUTHORIZED
-      );
-    }
-    return {
-      Authorization: `Bearer ${token}`,
+    const headers: Record<string, string> = {
       Accept: "*/*",
       "User-Agent": "FieldShift-Backend/1.0",
     };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
   }
 
   /**
@@ -119,7 +116,7 @@ export class SmapClient {
       `cell_lon[${rowMin}:${rowMax}][${colMin}:${colMax}]`,
     ].join(",");
 
-    const fullUrl = `${rawUrl}?${encodeURI(varQuery)}`;
+    const fullUrl = `${rawUrl}?${encodeURI(varQuery).replace(/\[/g, "%5B").replace(/\]/g, "%5D")}`;
 
     try {
       const response = await fetch(fullUrl, {

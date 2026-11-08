@@ -1,0 +1,52 @@
+model NasaPowerRegionalDataset {
+  id                 String                  @id @default(uuid(7))
+  regionKey          String
+  source             String                  @default("NASA_POWER_REGIONAL")
+  latitudeMin        Float
+  latitudeMax        Float
+  longitudeMin       Float
+  longitudeMax       Float
+  startDate          String
+  endDate            String
+  requestedDays      Int
+  returnedDays       Int
+  missingDays        Int
+  coveragePercentage Float
+  status             String                  @default("COMPLETED")
+  gridCellCount      Json?
+  metadata           Json?
+  fetchedAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  records            NasaPowerDailyRecord[]
+
+  @@index([regionKey])
+  @@index([regionKey, startDate, endDate])
+  @@map("nasa_power_regional_datasets")
+}
+
+model NasaPowerDailyRecord {
+  id                 String                   @id @default(uuid(7))
+  datasetId          String?
+  regionKey          String
+  date               String
+  observedAt         DateTime
+  temperatureMean    Float?
+  temperatureMin     Float?
+  temperatureMax     Float?
+  rainfallMean       Float?
+  rainfallMin        Float?
+  rainfallMax        Float?
+  solarRadiationMean Float?
+  solarRadiationMin  Float?
+  solarRadiationMax  Float?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  dataset            NasaPowerRegionalDataset? @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+
+  @@unique([regionKey, date])
+  @@index([regionKey, observedAt])
+  @@index([date])
+  @@map("nasa_power_daily_records")
+}

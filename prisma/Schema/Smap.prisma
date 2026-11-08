@@ -1,0 +1,51 @@
+model SmapRegionalDataset {
+  id                 String             @id @default(uuid(7))
+  regionKey          String
+  source             String             @default("NASA_SMAP_L4")
+  latitudeMin        Float
+  latitudeMax        Float
+  longitudeMin       Float
+  longitudeMax       Float
+  startDate          String
+  endDate            String
+  requestedDays      Int
+  returnedDays       Int
+  missingDays        Int
+  coveragePercentage Float
+  status             String             @default("COMPLETED")
+  metadata           Json?
+  fetchedAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  records            SmapDailyRecord[]
+
+  @@index([regionKey])
+  @@index([regionKey, startDate, endDate])
+  @@map("smap_regional_datasets")
+}
+
+model SmapDailyRecord {
+  id                   String               @id @default(uuid(7))
+  datasetId            String?
+  regionKey            String
+  date                 String               // YYYYMMDD
+  observedAt           DateTime
+  surfaceMoistureMean  Float?               // m³/m³
+  surfaceMoistureMin   Float?
+  surfaceMoistureMax   Float?
+  rootzoneMoistureMean Float?               // m³/m³
+  rootzoneMoistureMin  Float?
+  rootzoneMoistureMax  Float?
+  surfaceCondition     String?              // DRY_STRESS, OPTIMAL_MOISTURE, WATERLOGGED
+  rootzoneCondition    String?              // DEPLETED_RESERVE, ADEQUATE_RESERVE, SATURATED
+  validCells           Int?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  dataset              SmapRegionalDataset? @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+
+  @@unique([regionKey, date])
+  @@index([regionKey, observedAt])
+  @@index([date])
+  @@map("smap_daily_records")
+}
